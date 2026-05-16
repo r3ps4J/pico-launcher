@@ -21,6 +21,7 @@
 #include "romBrowser/Theme/Material/MaterialThemeFileIconFactory.h"
 #include "romBrowser/views/NdsGameDetailsBottomSheetView.h"
 #include "romBrowser/views/cheats/CheatsBottomSheetView.h"
+#include "romBrowser/views/saves/SavesBottomSheetView.h"
 #include "romBrowser/views/DisplaySettingsBottomSheetView.h"
 #include "bgm/AudioStreamPlayer.h"
 #include "bgm/BgmService.h"
@@ -266,6 +267,16 @@ void App::HandleTrigger(RomBrowserStateTrigger trigger, RomBrowserState newState
             HandleHideGameInfoTrigger();
             break;
         }
+        case RomBrowserStateTrigger::ShowSaveManagement:
+        {
+            HandleShowSaveManagementTrigger();
+            break;
+        }
+        case RomBrowserStateTrigger::HideSaveManagement:
+        {
+            HandleHideSaveManagementTrigger();
+            break;
+        }
         case RomBrowserStateTrigger::ShowDisplaySettings:
         {
             HandleShowDisplaySettingsTrigger();
@@ -308,6 +319,22 @@ void App::HandleShowGameInfoTrigger()
 }
 
 void App::HandleHideGameInfoTrigger()
+{
+    _dialogPresenter.CloseDialog();
+    if (!_dialogPresenter.GetOldFocus())
+        _romBrowserBottomScreenView->Focus(_focusManager);
+}
+
+void App::HandleShowSaveManagementTrigger()
+{
+    auto saveManagementViewModel = SharedPtr<SaveManagementViewModel>::MakeShared(
+        _romBrowserController.GetTriggerFileInfo(), &_romBrowserController);
+    auto savesDialog = SavesBottomSheetView::CreateShared(
+        std::move(saveManagementViewModel), &_theme->GetMaterialColorScheme(), _theme->GetFontRepository(), &_focusManager);
+    _dialogPresenter.ShowDialog(std::move(savesDialog));
+}
+
+void App::HandleHideSaveManagementTrigger()
 {
     _dialogPresenter.CloseDialog();
     if (!_dialogPresenter.GetOldFocus())
@@ -383,6 +410,7 @@ bool App::IsRomBrowserVisible() const
     auto curState = stateMachine.GetCurrentState();
     return curState == RomBrowserState::Browser
         || curState == RomBrowserState::GameInfo
+        || curState == RomBrowserState::SaveManagement
         || curState == RomBrowserState::DisplaySettings
         || curState == RomBrowserState::Launching;
 }

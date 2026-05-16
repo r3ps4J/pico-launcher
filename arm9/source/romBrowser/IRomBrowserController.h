@@ -20,6 +20,8 @@ public:
     virtual void LaunchFile(const FileInfo& fileInfo) = 0;
     virtual void ShowGameInfo(const FileInfo& fileInfo) = 0;
     virtual void HideGameInfo() = 0;
+    virtual void ShowSaveManagement(const FileInfo& fileInfo) = 0;
+    virtual void HideSaveManagement() = 0;
     virtual void ShowDisplaySettings() = 0;
     virtual void HideDisplaySettings() = 0;
 
@@ -42,6 +44,8 @@ public:
         const RomBrowserDisplaySettings& romBrowserDisplaySettings) = 0;
 
     virtual const FileInfo& GetTriggerFileInfo() const = 0;
+    virtual void SetSelectedSavePathForGame(const char* romPath, const char* savePath) = 0;
+    virtual const char* GetSelectedSavePathForGame(const char* romPath) const = 0;
 };
 
 inline IRomBrowserController::~IRomBrowserController() { }

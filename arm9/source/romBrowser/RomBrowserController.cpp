@@ -2,6 +2,7 @@
 #include <array>
 #include "picoLoaderBootstrap.h"
 #include "PicoLoaderProcess.h"
+#include "core/StringUtil.h"
 #include "FileType/ExtensionFileTypeProvider.h"
 #include "FileType/FileType.h"
 #include "SdFolderFactory.h"
@@ -41,6 +42,17 @@ void RomBrowserController::HideGameInfo()
     _stateMachine.Fire(RomBrowserStateTrigger::HideGameInfo);
 }
 
+void RomBrowserController::ShowSaveManagement(const FileInfo& fileInfo)
+{
+    _triggerFileInfo = FileInfo(fileInfo);
+    _stateMachine.Fire(RomBrowserStateTrigger::ShowSaveManagement);
+}
+
+void RomBrowserController::HideSaveManagement()
+{
+    _stateMachine.Fire(RomBrowserStateTrigger::HideSaveManagement);
+}
+
 void RomBrowserController::ShowDisplaySettings()
 {
     _stateMachine.Fire(RomBrowserStateTrigger::ShowDisplaySettings);
@@ -66,6 +78,20 @@ void RomBrowserController::SetRomBrowserDisplaySettings(
     _appSettingsService->GetAppSettings().romBrowserDisplaySettings = romBrowserDisplaySettings;
     _saveSettingsPending = true;
     _stateMachine.Fire(RomBrowserStateTrigger::ChangeDisplayMode);
+}
+
+void RomBrowserController::SetSelectedSavePathForGame(const char* romPath, const char* savePath)
+{
+    StringUtil::Copy(_selectedSaveRomPath, romPath, sizeof(_selectedSaveRomPath));
+    StringUtil::Copy(_selectedSavePath, savePath, sizeof(_selectedSavePath));
+}
+
+const char* RomBrowserController::GetSelectedSavePathForGame(const char* romPath) const
+{
+    if (_selectedSaveRomPath[0] == 0 || strcasecmp(_selectedSaveRomPath, romPath))
+        return nullptr;
+
+    return _selectedSavePath;
 }
 
 void RomBrowserController::Update()
@@ -224,6 +250,11 @@ void RomBrowserController::SetPicoLoaderParams() const
     loadParams->argumentsLength = 0;
     if (_triggerFileInfo.GetFileType()->TrySetLaunchParameters(loadParams, _navigatePath))
     {
+        const char* selectedSavePath = GetSelectedSavePathForGame(_navigatePath);
+        if (selectedSavePath != nullptr && selectedSavePath[0] != 0)
+        {
+            StringUtil::Copy(loadParams->savePath, selectedSavePath, sizeof(loadParams->savePath));
+        }
         gProcessManager.Goto<PicoLoaderProcess>();
     }
     else

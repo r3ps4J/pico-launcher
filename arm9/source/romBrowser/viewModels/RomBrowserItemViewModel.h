@@ -11,6 +11,7 @@ public:
 
     void Activate();
     void ShowGameInfo();
+    void ShowSaveManagement();
 
     void SetIndex(int index)
     {

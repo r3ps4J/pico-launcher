@@ -7,6 +7,8 @@ enum class RomBrowserStateTrigger
     ChangeDisplayMode,
     ShowGameInfo,
     HideGameInfo,
+    ShowSaveManagement,
+    HideSaveManagement,
     FolderLoadDone,
     Launch,
     ShowDisplaySettings,

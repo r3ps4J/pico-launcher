@@ -31,3 +31,15 @@ void RomBrowserItemViewModel::ShowGameInfo()
         }
     }
 }
+
+void RomBrowserItemViewModel::ShowSaveManagement()
+{
+    if (_index >= 0)
+    {
+        const auto& item = _romBrowserController->GetRomBrowserViewModel()->GetFileInfoManager().GetItem(_index);
+        if (item.GetFileType()->GetClassification() == FileTypeClassification::Game)
+        {
+            _romBrowserController->ShowSaveManagement(item);
+        }
+    }
+}

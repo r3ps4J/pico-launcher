@@ -26,6 +26,8 @@ public:
     void LaunchFile(const FileInfo& fileInfo) override;
     void ShowGameInfo(const FileInfo& fileInfo) override;
     void HideGameInfo() override;
+    void ShowSaveManagement(const FileInfo& fileInfo) override;
+    void HideSaveManagement() override;
     void ShowDisplaySettings() override;
     void HideDisplaySettings() override;
 
@@ -50,6 +52,8 @@ public:
     }
 
     virtual const FileInfo& GetTriggerFileInfo() const override { return _triggerFileInfo; }
+    void SetSelectedSavePathForGame(const char* romPath, const char* savePath) override;
+    const char* GetSelectedSavePathForGame(const char* romPath) const override;
 
 private:
     IAppSettingsService* _appSettingsService;
@@ -68,6 +72,8 @@ private:
     std::unique_ptr<CoverRepository> _coverRepository;
     ExtensionFileTypeProvider _fileTypeProvider;
     std::unique_ptr<ICheatRepository> _cheatRepository;
+    char _selectedSaveRomPath[256] = { 0 };
+    char _selectedSavePath[256] = { 0 };
 
     void HandleTrigger();
     void HandleNavigateTrigger();

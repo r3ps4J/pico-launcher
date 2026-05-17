@@ -298,7 +298,7 @@ bool SaveManagementViewModel::TryGetNextNewSavePath(char* savePath, u32 savePath
 {
     for (u32 i = 1; i != 0; i++)
     {
-        int length = mini_snprintf(savePath, savePathLength, "%s.%u.sav", _savePathPrefix, i);
+        int length = mini_snprintf(savePath, savePathLength, "%s.%02u.sav", _savePathPrefix, i);
         if (length <= 0 || length >= (int)savePathLength)
             return false;
 

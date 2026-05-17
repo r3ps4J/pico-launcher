@@ -1,9 +1,12 @@
 #include "common.h"
 #include <algorithm>
+#include <memory>
 #include <string.h>
 #include "core/StringUtil.h"
 #include "core/mini-printf.h"
 #include "fat/File.h"
+#include "romBrowser/GameConfig.h"
+#include "romBrowser/JsonGameConfigSerializer.h"
 #include "romBrowser/FileType/NullFileTypeProvider.h"
 #include "romBrowser/SdFolderFactory.h"
 #include "SaveManagementViewModel.h"
@@ -41,9 +44,10 @@ SaveManagementViewModel::SaveManagementViewModel(
     const FileInfo& romFileInfo, IRomBrowserController* romBrowserController)
     : _romFileInfo(romFileInfo), _romBrowserController(romBrowserController)
 {
+    BuildRomPath();
+    LoadGameConfig();
     _loadSavesTask = _romBrowserController->GetIoTaskQueue()->Enqueue([this] (const vu8& cancelRequested)
     {
-        BuildRomPath();
         LoadSaves();
         return TaskResult<void>::Completed();
     });
@@ -54,7 +58,7 @@ void SaveManagementViewModel::ActivateItem(int index)
     if (_state != State::DisplaySaves)
         return;
 
-    SetActiveSaveIndex(index);
+    SetActiveSaveIndex(index, true);
 }
 
 void SaveManagementViewModel::CreateNewSave()
@@ -66,10 +70,10 @@ void SaveManagementViewModel::CreateNewSave()
     newSavePath[0] = 0;
     if (TryGetNextNewSavePath(newSavePath, sizeof(newSavePath)))
     {
-        File file;
-        if (file.Open(newSavePath, FA_CREATE_NEW | FA_WRITE) == FR_OK)
+        const auto file = std::make_unique<File>();
+        if (file->Open(newSavePath, FA_CREATE_NEW | FA_WRITE) == FR_OK)
         {
-            file.Close();
+            file->Close();
             LoadSaves(newSavePath);
         }
     }
@@ -90,6 +94,7 @@ void SaveManagementViewModel::BuildRomPath()
         _romPath[pathLength - 1] = 0;
     }
     strlcat(_romPath, _romFileInfo.GetFileName(), sizeof(_romPath));
+    JsonGameConfigSerializer::BuildPathForRom(_romPath, _configPath, sizeof(_configPath));
 
     StringUtil::Copy(_savePathPrefix, _romPath, sizeof(_savePathPrefix));
     char* extension = strrchr(_savePathPrefix, '.');
@@ -119,6 +124,19 @@ void SaveManagementViewModel::BuildRomPath()
     else
     {
         *lastSlash = 0;
+    }
+}
+
+void SaveManagementViewModel::LoadGameConfig()
+{
+    _configSelectedSavePath[0] = 0;
+    if (_configPath[0] == 0)
+        return;
+
+    GameConfig gameConfig;
+    if (JsonGameConfigSerializer().Deserialize(&gameConfig, _configPath))
+    {
+        StringUtil::Copy(_configSelectedSavePath, gameConfig.GetSelectedSavePath(), sizeof(_configSelectedSavePath));
     }
 }
 
@@ -214,7 +232,11 @@ void SaveManagementViewModel::SelectInitialSave(const char* preferredSavePath)
     const char* controllerSelectedPath = _romBrowserController->GetSelectedSavePathForGame(_romPath);
     const char* selectedPath = preferredSavePath != nullptr && preferredSavePath[0] != 0
         ? preferredSavePath
-        : controllerSelectedPath;
+        : controllerSelectedPath != nullptr && controllerSelectedPath[0] != 0
+            ? controllerSelectedPath
+            : _configSelectedSavePath[0] != 0
+                ? _configSelectedSavePath
+                : nullptr;
 
     if (selectedPath != nullptr && selectedPath[0] != 0)
     {
@@ -235,7 +257,7 @@ void SaveManagementViewModel::SelectInitialSave(const char* preferredSavePath)
 
     if (selectedIndex >= 0)
     {
-        SetActiveSaveIndex(selectedIndex);
+        SetActiveSaveIndex(selectedIndex, preferredSavePath != nullptr && preferredSavePath[0] != 0);
     }
     else
     {
@@ -243,7 +265,7 @@ void SaveManagementViewModel::SelectInitialSave(const char* preferredSavePath)
     }
 }
 
-void SaveManagementViewModel::SetActiveSaveIndex(int index)
+void SaveManagementViewModel::SetActiveSaveIndex(int index, bool saveGameConfig)
 {
     if (index < 0 || index >= (int)_saveCount)
         return;
@@ -255,6 +277,21 @@ void SaveManagementViewModel::SetActiveSaveIndex(int index)
     _activeSaveIndex = index;
     _selectedItem = index;
     _romBrowserController->SetSelectedSavePathForGame(_romPath, _saves[index].path);
+    if (saveGameConfig)
+    {
+        SaveGameConfig();
+    }
+}
+
+void SaveManagementViewModel::SaveGameConfig()
+{
+    if (_configPath[0] == 0 || _activeSaveIndex < 0)
+        return;
+
+    GameConfig gameConfig;
+    gameConfig.SetSelectedSavePath(_saves[_activeSaveIndex].path);
+    JsonGameConfigSerializer().Serialize(&gameConfig, _configPath);
+    StringUtil::Copy(_configSelectedSavePath, gameConfig.GetSelectedSavePath(), sizeof(_configSelectedSavePath));
 }
 
 bool SaveManagementViewModel::TryGetNextNewSavePath(char* savePath, u32 savePathLength) const

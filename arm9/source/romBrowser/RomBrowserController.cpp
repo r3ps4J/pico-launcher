@@ -5,6 +5,8 @@
 #include "core/StringUtil.h"
 #include "FileType/ExtensionFileTypeProvider.h"
 #include "FileType/FileType.h"
+#include "GameConfig.h"
+#include "JsonGameConfigSerializer.h"
 #include "SdFolderFactory.h"
 #include "services/settings/IAppSettingsService.h"
 #include "cheats/UsrCheatRepositoryFactory.h"
@@ -251,9 +253,26 @@ void RomBrowserController::SetPicoLoaderParams() const
     if (_triggerFileInfo.GetFileType()->TrySetLaunchParameters(loadParams, _navigatePath))
     {
         const char* selectedSavePath = GetSelectedSavePathForGame(_navigatePath);
+        char configSelectedSavePath[256];
+        configSelectedSavePath[0] = 0;
+        if ((selectedSavePath == nullptr || selectedSavePath[0] == 0))
+        {
+            char configPath[256];
+            GameConfig gameConfig;
+            if (JsonGameConfigSerializer::BuildPathForRom(_navigatePath, configPath, sizeof(configPath))
+                && JsonGameConfigSerializer().Deserialize(&gameConfig, configPath))
+            {
+                StringUtil::Copy(configSelectedSavePath, gameConfig.GetSelectedSavePath(), sizeof(configSelectedSavePath));
+                selectedSavePath = configSelectedSavePath;
+            }
+        }
         if (selectedSavePath != nullptr && selectedSavePath[0] != 0)
         {
-            StringUtil::Copy(loadParams->savePath, selectedSavePath, sizeof(loadParams->savePath));
+            FILINFO fileInfo;
+            if (f_stat(selectedSavePath, &fileInfo) == FR_OK && !(fileInfo.fattrib & AM_DIR))
+            {
+                StringUtil::Copy(loadParams->savePath, selectedSavePath, sizeof(loadParams->savePath));
+            }
         }
         gProcessManager.Goto<PicoLoaderProcess>();
     }

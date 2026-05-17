@@ -1,8 +1,8 @@
 #include "common.h"
 #include <memory>
 #include "json/ArduinoJson.h"
+#include "json/JsonFile.h"
 #include "AppSettings.h"
-#include "fat/File.h"
 #include "JsonAppSettingsSerializer.h"
 
 #pragma GCC optimize("Os")
@@ -121,39 +121,22 @@ static void serializeFileAssociations(DynamicJsonDocument& json, const AppSettin
     }
 }
 
-static std::unique_ptr<u8[]> writeJson(const AppSettings* appSettings, u32& length)
+static void writeJson(DynamicJsonDocument& json, const AppSettings* appSettings)
 {
-    DynamicJsonDocument json(JSON_RESERVED_SIZE);
     json[KEY_LANGUAGE] = appSettings->language.GetString();
     json[KEY_ROM_BROWSER_LAYOUT] = serializeRomBrowserLayout(appSettings->romBrowserDisplaySettings.layout);
     json[KEY_ROM_BROWSER_SORT_MODE] = serializeRomBrowserSortMode(appSettings->romBrowserDisplaySettings.sortMode);
     json[KEY_THEME] = appSettings->theme.GetString();
     json[KEY_LAST_USED_FILE_PATH] = appSettings->lastUsedFilePath.GetString();
     serializeFileAssociations(json, appSettings);
-
-    u32 outputSize = measureJsonPretty(json);
-    std::unique_ptr<u8[]> fileData(new(cache_align) u8[outputSize]);
-
-    serializeJsonPretty(json, fileData.get(), outputSize);
-
-    length = outputSize;
-    return fileData;
 }
 
 void JsonAppSettingsSerializer::Serialize(const AppSettings* appSettings, const char* filePath) const
 {
-    u32 length = 0;
-    std::unique_ptr<u8[]> fileData = writeJson(appSettings, length);
+    DynamicJsonDocument json(JSON_RESERVED_SIZE);
+    writeJson(json, appSettings);
 
-    const auto file = std::make_unique<File>();
-    if (file->Open(filePath, FA_WRITE | FA_CREATE_ALWAYS) != FR_OK)
-    {
-        LOG_ERROR("Couldn't open settings file for writing\n");
-        return;
-    }
-
-    u32 bytesWritten;
-    if (file->Write(fileData.get(), length, bytesWritten) != FR_OK || bytesWritten != length)
+    if (!JsonFile::WritePretty(json, filePath))
     {
         LOG_ERROR("Error while writing settings file\n");
         return;
@@ -186,23 +169,8 @@ static void readJson(AppSettings* appSettings, const JsonDocument& json)
 
 bool JsonAppSettingsSerializer::Deserialize(AppSettings* appSettings, const char* filePath) const
 {
-    const auto file = std::make_unique<File>();
-    if (file->Open(filePath, FA_READ | FA_OPEN_EXISTING) != FR_OK)
-        return false;
-
-    u32 fileSize = file->GetSize();
-    if (fileSize == 0)
-        return false;
-
-    std::unique_ptr<u8[]> fileData(new(cache_align) u8[fileSize]);
-    u8* fileDataPtr = fileData.get();
-
-    u32 bytesRead = 0;
-    if (file->Read(fileDataPtr, fileSize, bytesRead) != FR_OK)
-        return false;
-
     DynamicJsonDocument json(JSON_RESERVED_SIZE);
-    if (deserializeJson(json, fileDataPtr, fileSize) != DeserializationError::Ok)
+    if (!JsonFile::Read(json, filePath))
         return false;
 
     readJson(appSettings, json);

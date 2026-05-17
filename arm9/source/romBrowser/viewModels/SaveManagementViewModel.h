@@ -83,14 +83,18 @@ private:
     char _romDirectory[256] = { 0 };
     char _savePathPrefix[256] = { 0 };
     char _saveFileNamePrefix[256] = { 0 };
+    char _configPath[256] = { 0 };
+    char _configSelectedSavePath[256] = { 0 };
 
     void BuildRomPath();
+    void LoadGameConfig();
     void LoadSaves(const char* preferredSavePath = nullptr);
     void AddSave(const char* name, const char* path);
     void ClearSaves();
     void SortSaves();
     void SelectInitialSave(const char* preferredSavePath);
-    void SetActiveSaveIndex(int index);
+    void SetActiveSaveIndex(int index, bool saveGameConfig);
+    void SaveGameConfig();
     bool TryGetNextNewSavePath(char* savePath, u32 savePathLength) const;
     bool IsExtraSaveFileName(const char* fileName) const;
     void MakePathForFileName(char* path, u32 pathLength, const char* fileName) const;

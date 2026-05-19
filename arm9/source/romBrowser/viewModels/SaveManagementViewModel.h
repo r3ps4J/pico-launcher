@@ -94,6 +94,7 @@ private:
     void SortSaves();
     void SelectInitialSave(const char* preferredSavePath);
     void SetActiveSaveIndex(int index, bool saveGameConfig);
+    void ClearActiveSave(bool saveGameConfig);
     void SaveGameConfig();
     bool TryGetNextNewSavePath(char* savePath, u32 savePathLength) const;
     bool IsExtraSaveFileName(const char* fileName) const;

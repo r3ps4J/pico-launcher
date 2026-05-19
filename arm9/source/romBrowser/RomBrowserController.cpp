@@ -255,7 +255,7 @@ void RomBrowserController::SetPicoLoaderParams() const
         const char* selectedSavePath = GetSelectedSavePathForGame(_navigatePath);
         char configSelectedSavePath[256];
         configSelectedSavePath[0] = 0;
-        if ((selectedSavePath == nullptr || selectedSavePath[0] == 0))
+        if (selectedSavePath == nullptr)
         {
             char configPath[256];
             GameConfig gameConfig;

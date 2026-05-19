@@ -58,6 +58,12 @@ void SaveManagementViewModel::ActivateItem(int index)
     if (_state != State::DisplaySaves)
         return;
 
+    if (index == _activeSaveIndex)
+    {
+        ClearActiveSave(true);
+        return;
+    }
+
     SetActiveSaveIndex(index, true);
 }
 
@@ -283,13 +289,34 @@ void SaveManagementViewModel::SetActiveSaveIndex(int index, bool saveGameConfig)
     }
 }
 
+void SaveManagementViewModel::ClearActiveSave(bool saveGameConfig)
+{
+    for (u32 i = 0; i < _saveCount; i++)
+    {
+        _saves[i].isActive = false;
+    }
+    _activeSaveIndex = -1;
+    _romBrowserController->SetSelectedSavePathForGame(_romPath, "");
+    if (saveGameConfig)
+    {
+        SaveGameConfig();
+    }
+}
+
 void SaveManagementViewModel::SaveGameConfig()
 {
-    if (_configPath[0] == 0 || _activeSaveIndex < 0)
+    if (_configPath[0] == 0)
         return;
 
     GameConfig gameConfig;
-    gameConfig.SetSelectedSavePath(_saves[_activeSaveIndex].path);
+    if (_activeSaveIndex >= 0)
+    {
+        gameConfig.SetSelectedSavePath(_saves[_activeSaveIndex].path);
+    }
+    else
+    {
+        gameConfig.SetSelectedSavePath("");
+    }
     JsonGameConfigSerializer().Serialize(&gameConfig, _configPath);
     StringUtil::Copy(_configSelectedSavePath, gameConfig.GetSelectedSavePath(), sizeof(_configSelectedSavePath));
 }
